@@ -1,0 +1,104 @@
+@echo off
+REM Copy files and directories from one location to another.
+setlocal enableextensions
+setlocal enabledelayedexpansion
+
+rem TODO 1: Create destination dirs AFTER confirming
+rem TODO 2: fix formatting
+rem TODO 3: ...?
+
+
+:: Get source path
+set /p source=Source: 
+if NOT exist "%source%" (
+	echo ERROR: Source path does not exist.
+	exit /b 1
+)
+
+:: Get destination path
+set /p destination=Destination: 
+if "%destination%"=="%source%" (
+	echo ERROR: Cannot copy dir to itself.
+	exit /b 1
+)
+if NOT exist "%destination%" (
+	call :createDestination
+)
+if %errorlevel%==1 (
+	exit /b 1
+)
+
+:: Confirm with user
+call :confirm
+if %errorlevel%==1 (
+	exit /b 1
+)
+
+:: Copy files
+call :copy
+echo.
+echo Robocopy returned %errorlevel%
+echo.
+
+:: Report status
+if %errorlevel% equ 0 ( echo No files were copied. They already exist in destination dir.)
+if %errorlevel% equ 1 ( echo All files copied successfully.)
+if %errorlevel% equ 2 ( echo No files copied. Additional files exist in destination dir.)
+if %errorlevel% equ 3 ( echo Some files copied. Additional files were present.)
+if %errorlevel% equ 5 ( echo Some files copied. Some files were mismatched.)
+if %errorlevel% equ 6 ( echo No files copied. Additional and mismatched files exist in destination dir.)
+if %errorlevel% equ 7 ( echo Files copied. Mismatched and additional files were present.)
+if %errorlevel% equ 8 ( echo ERROR: Several files failed to copy.)
+if %errorlevel% gtr 8 ( echo ERROR: Some failure has occured. Read copylog.log)
+
+:: Exit
+if %errorlevel% geq 8 (
+	exit /b 1
+)
+exit /b 0
+
+:: ------------------------------------
+:: Quasi "funcions"
+:: ------------------------------------
+:createDestination
+set /p createDest=Destination path does not exist. Create one? ^(y/n^) 
+if /I "!createDest!"=="y" (
+	echo.
+	echo Creating destination "%destination%"...
+	echo.
+	mkdir "%destination%"
+	
+	if %errorlevel%==0 (
+		echo Successfully created destination.
+		echo.
+		exit /b 0
+	) else (
+		echo ERROR: Failed to create destination.
+		exit /b 1
+	)
+)
+if /I "!createDest!"=="n" (
+	echo Aborted.
+	exit /b 1
+)
+echo Please enter y or n.
+goto createDestination
+
+:confirm
+set /p confirmCopy=Confirm copying "%source%" to "%destination%"^? ^(y/n^) 
+if /I "!confirmCopy!"=="y" (
+	exit /b 0
+)
+if /I "!confirmCopy!"=="n" (
+	echo Aborted.
+	exit /b 1
+)
+echo Please enter y or n.
+goto confirm
+
+:copy
+echo.
+echo Copying "%source%" to "%destination%"...
+echo.
+robocopy %source% %destination% /E /mt:16 /V /LOG+:"copylog.log"
+exit /b %errorlevel%
