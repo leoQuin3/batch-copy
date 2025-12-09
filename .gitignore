@@ -1,0 +1,3 @@
+# Ignore log files
+copylog.log
+*.log
