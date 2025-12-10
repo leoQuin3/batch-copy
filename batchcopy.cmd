@@ -1,12 +1,14 @@
-@echo off
 REM Copy files and directories from one location to another.
-setlocal enableextensions
-setlocal enabledelayedexpansion
+@echo off
+setlocal enableextensions enabledelayedexpansion
 
-rem TODO 1: Create destination dirs AFTER confirming
-rem TODO 2: fix formatting
-rem TODO 3: ...?
+rem [X] TODO 1: Create destination dirs AFTER confirming
+rem [X] TODO 2: fix formatting 							
+rem [ ] TODO 3: (IMPORTANT) Sanatize paths being input!!!
 
+rem [ ] EDGE CASE 1: What to do with created dir after copying has failed?
+rem [ ] EDGE CASE 2: How to handle empty input paths?
+rem [ ] EDGE CASE 3: How to handle paths like "." or "../"?
 
 :: Get source path
 set /p source=Source: 
@@ -22,16 +24,49 @@ if "%destination%"=="%source%" (
 	exit /b 1
 )
 if NOT exist "%destination%" (
-	call :createDestination
-)
-if %errorlevel%==1 (
-	exit /b 1
+	echo.
+	echo Destination path does not exist. Create one?
+	
+	call :confirm
+	
+	:: No
+	if !errorlevel!==1 (
+		echo.
+		echo Aborting batch job...
+		exit /b 1
+
+	) else (
+		:: Yes
+		set /A shouldMakeDestDir=1
+		echo.
+		echo Planned dir creation...
+	)
 )
 
 :: Confirm with user
+echo.
+echo Are you sure you want to copy "%source%" to "%destination%"?
 call :confirm
+
+:: If no
 if %errorlevel%==1 (
+	echo.
+	echo Aborting batch job...
 	exit /b 1
+)
+
+:: Create destination if needed
+if defined shouldMakeDestDir (
+	call :createDestination
+	
+	if %errorlevel%==0 (
+		echo.
+		echo Successfully created destination.
+	) else (
+		echo.
+		echo ERROR: Failed to create destination.
+		exit /b 1
+	)
 )
 
 :: Copy files
@@ -60,41 +95,24 @@ exit /b 0
 :: ------------------------------------
 :: Quasi "funcions"
 :: ------------------------------------
-:createDestination
-set /p createDest=Destination path does not exist. Create one? ^(y/n^) 
-if /I "!createDest!"=="y" (
-	echo.
-	echo Creating destination "%destination%"...
-	echo.
-	mkdir "%destination%"
-	
-	if %errorlevel%==0 (
-		echo Successfully created destination.
-		echo.
-		exit /b 0
-	) else (
-		echo ERROR: Failed to create destination.
-		exit /b 1
-	)
-)
-if /I "!createDest!"=="n" (
-	echo Aborted.
-	exit /b 1
-)
-echo Please enter y or n.
-goto createDestination
-
 :confirm
-set /p confirmCopy=Confirm copying "%source%" to "%destination%"^? ^(y/n^) 
-if /I "!confirmCopy!"=="y" (
-	exit /b 0
+setlocal
+set /P userConfirmed=Please enter y or n: 
+if /I "%userConfirmed%"=="y" (
+	endlocal & exit /b 0
 )
-if /I "!confirmCopy!"=="n" (
-	echo Aborted.
-	exit /b 1
+if /I "%userConfirmed%"=="n" (
+	endlocal & exit /b 1
+) else (
+	endlocal
+	goto :confirm
 )
-echo Please enter y or n.
-goto confirm
+
+:createDestination
+echo.
+echo Creating destination "%destination%"...
+mkdir "%destination%"
+exit /b %errorlevel%
 
 :copy
 echo.
